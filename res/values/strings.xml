@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WebServerTest</string>
+
+    <string name="error_make_directory_failed">保存用ディレクトリの作成に失敗しました</string>
+</resources>
