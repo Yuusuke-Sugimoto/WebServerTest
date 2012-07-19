@@ -4,8 +4,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiManager.WifiLock;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
@@ -45,6 +48,14 @@ public class WebServerTestActivity extends Activity {
      * サーバソケット
      */
     private ServerSocket mServerSocket;
+    /**
+     * スリープ時にWi-Fiを維持するために使用
+     */
+    private WakeLock mWakeLock;
+    /**
+     * スリープ時にWi-Fiを維持するために使用
+     */
+    private WifiLock mWifiLock;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -76,6 +87,15 @@ public class WebServerTestActivity extends Activity {
         TextView mTextView = (TextView)findViewById(R.id.local_ip_address);
         mTextView.setText(strIpAddress + ":" + WebServerTestActivity.PORT_NUMBER);
 
+        /**
+         * スリープ時にWi-Fiを維持する
+         * 参考:android - How do I keep Wifi from disconnecting when phone is asleep? - Stack Overflow
+         *      http://stackoverflow.com/questions/3871824/how-do-i-keep-wifi-from-disconnecting-when-phone-is-asleep
+         */
+        PowerManager mPowerManager = (PowerManager)getSystemService(Context.POWER_SERVICE);
+        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakeLock");
+        mWifiLock = mWifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL, "MyWifiLock");
+
         try {
             mServerSocket = new ServerSocket(WebServerTestActivity.PORT_NUMBER);
 
@@ -97,10 +117,10 @@ public class WebServerTestActivity extends Activity {
                                             // HTTPリクエストが空でない場合
                                             Request mRequest = new Request(line);
                                             if (mRequest.getPath().equals("/exit")) {
-                                                // 終了コマンドにアクセスされた場合
-                                                isRunning = false;
-
-                                                finish();
+//                                                // 終了コマンドにアクセスされた場合
+//                                                isRunning = false;
+//
+//                                                finish();
                                             }
                                             else {
                                                 // ファイルが要求された場合
@@ -170,6 +190,30 @@ public class WebServerTestActivity extends Activity {
         catch (IOException e) {
             Log.e("onCreate", e.getMessage(), e);
             finish();
+        }
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        if (mWakeLock.isHeld()) {
+            mWakeLock.release();
+        }
+        if (mWifiLock.isHeld()) {
+            mWifiLock.release();
+        }
+    }
+    
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        if (!mWakeLock.isHeld()) {
+            mWakeLock.acquire();
+        }
+        if (!mWifiLock.isHeld()) {
+            mWifiLock.acquire();
         }
     }
 
