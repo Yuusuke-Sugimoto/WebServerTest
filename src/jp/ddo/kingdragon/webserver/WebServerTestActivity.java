@@ -116,49 +116,44 @@ public class WebServerTestActivity extends Activity {
                                         if (line != null) {
                                             // HTTPリクエストが空でない場合
                                             Request mRequest = new Request(line);
-                                            if (mRequest.getPath().equals("/exit")) {
-//                                                // 終了コマンドにアクセスされた場合
-//                                                isRunning = false;
-//
-//                                                finish();
+                                            File mFile = new File(baseDir, mRequest.getPath());
+                                            if (mFile.exists()) {
+                                                // 要求されたファイルが存在する場合
+                                                /**
+                                                 * MimeTypeを判別
+                                                 * 参考:もぷろぐ: Android で MIME Type 判別
+                                                 *      http://ac-mopp.blogspot.jp/2011/12/android-mime-type.html
+                                                 */
+                                                String[] splittedFileName = mFile.getName().split("\\.");
+                                                String ext = splittedFileName[splittedFileName.length - 1];
+                                                String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+
+                                                OutputStream os = clientSocket.getOutputStream();
+                                                PrintWriter pw = new PrintWriter(os);
+                                                pw.print("HTTP/1.1 200 OK\r\n");
+                                                pw.print("Content-Type: " + mimeType + "; charset=UTF-8\r\n");
+                                                pw.print("Content-Length: " + mFile.length() + "\r\n");
+                                                pw.print("Connection: Keep-Alive\r\n\r\n");
+                                                pw.flush();
+                                                FileInputStream fis = new FileInputStream(mFile);
+                                                int byteData;
+                                                while ((byteData = fis.read()) != -1) {
+                                                    os.write(byteData);
+                                                }
+                                                os.flush();
+                                                fis.close();
                                             }
                                             else {
-                                                // ファイルが要求された場合
-                                                File mFile = new File(baseDir, mRequest.getPath());
-                                                if (mFile.exists()) {
-                                                    // 要求されたファイルが存在する場合
-                                                    /**
-                                                     * MimeTypeを判別
-                                                     * 参考:もぷろぐ: Android で MIME Type 判別
-                                                     *      http://ac-mopp.blogspot.jp/2011/12/android-mime-type.html
-                                                     */
-                                                    String[] splittedFileName = mFile.getName().split("\\.");
-                                                    String ext = splittedFileName[splittedFileName.length - 1];
-                                                    String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
-
-                                                    OutputStream os = clientSocket.getOutputStream();
-                                                    PrintWriter pw = new PrintWriter(os);
-                                                    pw.print("HTTP/1.1 200 OK\r\n");
-                                                    pw.print("Connection: close\n");
-                                                    pw.print("Content-Length: " + mFile.length() + "\r\n");
-                                                    pw.print("Content-Type: " + mimeType + "; charset=UTF-8\r\n\r\n");
-                                                    pw.flush();
-                                                    FileInputStream fis = new FileInputStream(mFile);
-                                                    int byteData;
-                                                    while ((byteData = fis.read()) != -1) {
-                                                        os.write(byteData);
-                                                    }
-                                                    os.flush();
-                                                    fis.close();
-                                                }
-                                                else {
-                                                    // 要求されたファイルが存在しない場合
-                                                    // 404エラーを返す
-                                                    PrintWriter pw = new PrintWriter(clientSocket.getOutputStream());
-                                                    pw.print("HTTP/1.0 404 Not Found\r\n");
-                                                    pw.print("Connection: close\n");
-                                                    pw.flush();
-                                                }
+                                                // 要求されたファイルが存在しない場合
+                                                // 404エラーを返す
+                                                String content = "<html><head><title>404 Not Found</title><body>404 Not Found</body></html>";
+                                                PrintWriter pw = new PrintWriter(clientSocket.getOutputStream());
+                                                pw.print("HTTP/1.1 404 Not Found\r\n");
+                                                pw.print("Content-Type: text/html; charset=UTF-8\r\n");
+                                                pw.print("Content-Length: " + content.getBytes("UTF-8").length + "\r\n");
+                                                pw.print("Connection: Keep-Alive\r\n\r\n");
+                                                pw.print(content);
+                                                pw.flush();
                                             }
                                         }
                                     }
